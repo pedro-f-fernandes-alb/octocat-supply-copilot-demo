@@ -105,12 +105,15 @@ import { Product } from '../models/product';
 import { products as seedProducts } from '../seedData';
 
 const router = express.Router();
+// Raised above Node's default of 10 to support multiple feature consumers
+// (e.g., notifications, inventory sync, analytics) without triggering leak warnings.
 const MAX_PRODUCT_EVENT_LISTENERS = 20;
 
 let products: Product[] = [...seedProducts];
 export const productEvents = new EventEmitter();
 productEvents.setMaxListeners(MAX_PRODUCT_EVENT_LISTENERS);
 
+/** @internal - for test isolation only */
 export const resetProducts = () => {
   products = [...seedProducts];
   productEvents.removeAllListeners('low-stock');
@@ -118,8 +121,8 @@ export const resetProducts = () => {
 
 const isLowStock = (product: Product) =>
   typeof product.quantity === 'number' &&
-  typeof product.reorder_threshold === 'number' &&
-  product.quantity < product.reorder_threshold;
+  typeof product.reorderThreshold === 'number' &&
+  product.quantity < product.reorderThreshold;
 
 // Create a new product
 router.post('/', (req, res) => {
@@ -156,7 +159,7 @@ router.put('/:id', (req, res) => {
       productEvents.emit('low-stock', {
         productId: updatedProduct.productId,
         quantity: updatedProduct.quantity,
-        reorder_threshold: updatedProduct.reorder_threshold
+        reorderThreshold: updatedProduct.reorderThreshold
       });
     }
 

@@ -6,10 +6,10 @@ import { products as seedProducts } from '../seedData';
 
 let app: express.Express;
 
-const withInventory = (quantity: number, reorder_threshold: number) => ({
+const withInventory = (quantity: number, reorderThreshold: number) => ({
   ...seedProducts[0],
   quantity,
-  reorder_threshold
+  reorderThreshold
 });
 
 describe('Product API low-stock alerts', () => {
@@ -34,7 +34,7 @@ describe('Product API low-stock alerts', () => {
     expect(listener).toHaveBeenCalledWith({
       productId: seedProducts[0].productId,
       quantity: 9,
-      reorder_threshold: 10
+      reorderThreshold: 10
     });
   });
 
@@ -48,6 +48,31 @@ describe('Product API low-stock alerts', () => {
 
     expect(response.status).toBe(200);
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('should not re-emit low-stock alert when product is already below threshold', async () => {
+    await request(app).put('/products/1').send(withInventory(5, 10));
+
+    const listener = vi.fn();
+    productEvents.once('low-stock', listener);
+
+    const response = await request(app).put('/products/1').send(withInventory(3, 10));
+
+    expect(response.status).toBe(200);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('should re-emit low-stock alert after recovery above threshold', async () => {
+    await request(app).put('/products/1').send(withInventory(10, 10));
+    await request(app).put('/products/1').send(withInventory(9, 10));
+    await request(app).put('/products/1').send(withInventory(11, 10));
+
+    const listener = vi.fn();
+    productEvents.once('low-stock', listener);
+
+    await request(app).put('/products/1').send(withInventory(9, 10));
+
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it('should reset products back to seed data', async () => {
