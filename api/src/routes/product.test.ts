@@ -6,10 +6,10 @@ import { products as seedProducts } from '../seedData';
 
 let app: express.Express;
 
-const withInventory = (quantity: number, reorderThreshold: number) => ({
+const withInventory = (quantity: number, reorder_threshold: number) => ({
   ...seedProducts[0],
   quantity,
-  reorder_threshold: reorderThreshold
+  reorder_threshold
 });
 
 describe('Product API low-stock alerts', () => {
@@ -48,5 +48,26 @@ describe('Product API low-stock alerts', () => {
 
     expect(response.status).toBe(200);
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('should reset products back to seed data', async () => {
+    const newProduct = {
+      productId: 999,
+      supplierId: 1,
+      name: 'Temporary Product',
+      description: 'Used for reset testing',
+      price: 9.99,
+      sku: 'TMP-999',
+      unit: 'piece',
+      imgName: 'temp.png'
+    };
+
+    await request(app).post('/products').send(newProduct);
+    resetProducts();
+
+    const response = await request(app).get('/products');
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(seedProducts.length);
+    expect(response.body).toEqual(seedProducts);
   });
 });
