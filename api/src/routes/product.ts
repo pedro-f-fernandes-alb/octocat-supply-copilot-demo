@@ -108,6 +108,7 @@ const router = express.Router();
 
 let products: Product[] = [...seedProducts];
 export const productEvents = new EventEmitter();
+productEvents.setMaxListeners(20);
 
 export const resetProducts = () => {
   products = [...seedProducts];
@@ -145,7 +146,7 @@ router.put('/:id', (req, res) => {
   const index = products.findIndex(p => p.productId === parseInt(req.params.id));
   if (index !== -1) {
     const previousProduct = products[index];
-    const updatedProduct = req.body as Product;
+    const updatedProduct: Product = req.body;
 
     products[index] = updatedProduct;
 
