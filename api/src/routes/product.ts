@@ -100,12 +100,29 @@
  */
 
 import express from 'express';
+import { EventEmitter } from 'events';
 import { Product } from '../models/product';
 import { products as seedProducts } from '../seedData';
 
 const router = express.Router();
+// Raised above Node's default of 10 to support multiple feature consumers
+// (e.g., notifications, inventory sync, analytics) without triggering leak warnings.
+const MAX_PRODUCT_EVENT_LISTENERS = 20;
 
 let products: Product[] = [...seedProducts];
+export const productEvents = new EventEmitter();
+productEvents.setMaxListeners(MAX_PRODUCT_EVENT_LISTENERS);
+
+/** @internal - for test isolation only */
+export const resetProducts = () => {
+  products = [...seedProducts];
+  productEvents.removeAllListeners('low-stock');
+};
+
+const isLowStock = (product: Product) =>
+  typeof product.quantity === 'number' &&
+  typeof product.reorderThreshold === 'number' &&
+  product.quantity < product.reorderThreshold;
 
 // Create a new product
 router.post('/', (req, res) => {
@@ -133,7 +150,19 @@ router.get('/:id', (req, res) => {
 router.put('/:id', (req, res) => {
   const index = products.findIndex(p => p.productId === parseInt(req.params.id));
   if (index !== -1) {
-    products[index] = req.body;
+    const previousProduct = products[index];
+    const updatedProduct: Product = req.body;
+
+    products[index] = updatedProduct;
+
+    if (!isLowStock(previousProduct) && isLowStock(updatedProduct)) {
+      productEvents.emit('low-stock', {
+        productId: updatedProduct.productId,
+        quantity: updatedProduct.quantity,
+        reorderThreshold: updatedProduct.reorderThreshold
+      });
+    }
+
     res.json(products[index]);
   } else {
     res.status(404).send('Product not found');
