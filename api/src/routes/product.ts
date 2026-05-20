@@ -105,10 +105,11 @@ import { Product } from '../models/product';
 import { products as seedProducts } from '../seedData';
 
 const router = express.Router();
+const MAX_PRODUCT_EVENT_LISTENERS = 20;
 
 let products: Product[] = [...seedProducts];
 export const productEvents = new EventEmitter();
-productEvents.setMaxListeners(20);
+productEvents.setMaxListeners(MAX_PRODUCT_EVENT_LISTENERS);
 
 export const resetProducts = () => {
   products = [...seedProducts];
