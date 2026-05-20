@@ -100,12 +100,23 @@
  */
 
 import express from 'express';
+import { EventEmitter } from 'events';
 import { Product } from '../models/product';
 import { products as seedProducts } from '../seedData';
 
 const router = express.Router();
 
 let products: Product[] = [...seedProducts];
+export const productEvents = new EventEmitter();
+
+export const resetProducts = () => {
+  products = [...seedProducts];
+};
+
+const isLowStock = (product: Product) =>
+  typeof product.quantity === 'number' &&
+  typeof product.reorder_threshold === 'number' &&
+  product.quantity < product.reorder_threshold;
 
 // Create a new product
 router.post('/', (req, res) => {
@@ -133,7 +144,19 @@ router.get('/:id', (req, res) => {
 router.put('/:id', (req, res) => {
   const index = products.findIndex(p => p.productId === parseInt(req.params.id));
   if (index !== -1) {
-    products[index] = req.body;
+    const previousProduct = products[index];
+    const updatedProduct = req.body as Product;
+
+    products[index] = updatedProduct;
+
+    if (!isLowStock(previousProduct) && isLowStock(updatedProduct)) {
+      productEvents.emit('low-stock', {
+        productId: updatedProduct.productId,
+        quantity: updatedProduct.quantity,
+        reorder_threshold: updatedProduct.reorder_threshold
+      });
+    }
+
     res.json(products[index]);
   } else {
     res.status(404).send('Product not found');

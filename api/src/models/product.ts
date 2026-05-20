@@ -43,4 +43,6 @@ export interface Product {
     unit: string;
     imgName: string;
     discount?: number;
+    quantity?: number;
+    reorder_threshold?: number;
 }
