@@ -113,6 +113,7 @@ productEvents.setMaxListeners(MAX_PRODUCT_EVENT_LISTENERS);
 
 export const resetProducts = () => {
   products = [...seedProducts];
+  productEvents.removeAllListeners('low-stock');
 };
 
 const isLowStock = (product: Product) =>

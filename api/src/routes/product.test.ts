@@ -63,11 +63,15 @@ describe('Product API low-stock alerts', () => {
     };
 
     await request(app).post('/products').send(newProduct);
+    productEvents.on('low-stock', () => undefined);
+    expect(productEvents.listenerCount('low-stock')).toBe(1);
+
     resetProducts();
 
     const response = await request(app).get('/products');
     expect(response.status).toBe(200);
     expect(response.body).toHaveLength(seedProducts.length);
     expect(response.body).toEqual(seedProducts);
+    expect(productEvents.listenerCount('low-stock')).toBe(0);
   });
 });
